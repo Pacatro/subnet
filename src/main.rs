@@ -102,7 +102,7 @@ fn main() {
     });
 
     println!(
-        "Subnet: {} | Broadcast: {} | Mask: {} | Useful range: [{} - {}]",
+        "Subnet: {} | Broadcast: {} | Mask: /{} | Useful range: [{} - {}]",
         subnet_data.subnet, subnet_data.broadcast, subnet_data.mask, 
         subnet_data.useful_range.first().unwrap(), subnet_data.useful_range.last().unwrap()
     );
