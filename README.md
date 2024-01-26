@@ -28,3 +28,9 @@ subnet 192.168.20.0 120
 ```terminal
 Subnet: 192.168.20.0 | Broadcast: 192.168.20.127 | Mask: /25 | Useful range: [192.168.20.1 - 192.168.20.126]
 ```
+
+## Run tests
+
+```terminal
+cargo test
+```
