@@ -1,113 +1,130 @@
+mod subnet_error;
+
 use std::net::Ipv4Addr;
-use std::error::Error;
-use std::process;
-use clap::Parser;
+use subnet_error::SubnetError;
 
-#[derive(Parser)]
-#[command(name = "Subnet", author, version, about, long_about = None)]
-struct Cli {
-    /// IPv4 address
-    addr: Ipv4Addr,
-
-    /// Number of machines to implement subnet
-    machines: u32
-}
-
-#[derive(PartialEq, Debug)]
-struct IpData  {
-    ip: Ipv4Addr,
+#[derive(PartialEq, Eq, Debug)]
+struct AddrsData  {
+    addrs: Ipv4Addr,
     bin_ip: String,
     host_bits: usize,
 }
 
-#[derive(PartialEq, Debug)]
-struct SubnetData {
+fn ip_to_binary(ip: Ipv4Addr) -> String {
+    ip.octets()
+        .iter()
+        .map(|x| format!("{:08b}", x))
+        .collect::<Vec<String>>()
+        .join("")
+}
+
+fn get_addrs_data(addrs: Ipv4Addr, hosts: u32) -> Result<AddrsData, SubnetError> {
+    if hosts == 0 {
+        return Err(SubnetError::InvalidNumberHosts("Number of hosts must be greater than 0".to_string()));
+    }
+    
+    let mut host_bits: usize = 0;
+    let mut num_addrs: u32 = 2;
+
+    while num_addrs-2 < hosts {
+        host_bits += 1;
+        num_addrs = 2u32.pow(host_bits as u32);
+    }
+
+    let bin_ip: String = ip_to_binary(addrs);
+
+    Ok(AddrsData { addrs, bin_ip, host_bits })
+}
+
+/// This struct contains all the information about the subnetwork
+///
+/// ## Atributes
+/// - `subnet`: The subnet address
+/// - `mask`: The subnet mask
+/// - `useful_range`: The range of addresses that can be used by hosts
+/// - `broadcast`: The broadcast address
+///
+#[derive(PartialEq, Eq, Debug)]
+pub struct SubnetData {
     subnet: Ipv4Addr,
     mask: u32,
     useful_range: Vec<Ipv4Addr>,
     broadcast: Ipv4Addr
 }
 
-fn ip_to_binary(ip: Ipv4Addr) -> String {
-    let mut binary: Vec<String> = Vec::new();
-
-    let octecs: [u8; 4] = ip.octets();
-
-    for oct in octecs {
-        let bin: String = format!("{oct:08b}");
-        binary.push(bin);
+impl SubnetData {
+    pub fn new(subnet: Ipv4Addr, mask: u32, useful_range: Vec<Ipv4Addr>, broadcast: Ipv4Addr) -> Self {
+        Self { subnet, mask, useful_range, broadcast }
     }
 
-    binary.concat()
-}
-
-fn get_ip_data(ip: Ipv4Addr, disp: u32) -> IpData {
-    let mut host_bits: usize = 0;
-    let mut num_addrs: u32 = 2;
-
-    while num_addrs-2 < disp {
-        host_bits += 1;
-        num_addrs = 2u32.pow(host_bits as u32);
+    pub fn get_subnet_addrs(&self) -> Ipv4Addr {
+        self.subnet
     }
 
-    let bin_ip: String = ip_to_binary(ip);
+    pub fn get_mask(&self) -> u32 {
+        self.mask
+    }
 
-    IpData { ip, bin_ip, host_bits }
+    pub fn get_useful_range(&self) -> Vec<Ipv4Addr> {
+        self.useful_range.clone()
+    }
+
+    pub fn get_broadcast(&self) -> Ipv4Addr {
+        self.broadcast
+    }
 }
 
-fn get_broadcast(ip_data: &IpData) -> Result<Ipv4Addr, Box<dyn Error>> {
-    let start_host_idx: usize = ip_data.bin_ip.len() - ip_data.host_bits;
-    let host_bits: &str = &ip_data.bin_ip[start_host_idx..];
-    let host: u8 = u8::from_str_radix(&host_bits.replace("0", "1"), 2)?;
+fn get_broadcast(addrs_data: &AddrsData) -> Result<Ipv4Addr, SubnetError> {
+    let start_host_idx: usize = addrs_data.bin_ip.len() - addrs_data.host_bits;
+    let host_bits: &str = &addrs_data.bin_ip[start_host_idx..];
+    let host: u8 = u8::from_str_radix(&host_bits.replace("0", "1"), 2)
+        .map_err(|err| SubnetError::ParserError(err.to_string()))?;
 
-    let octecs: [u8; 4] = ip_data.ip.octets();
+    let octecs: [u8; 4] = addrs_data.addrs.octets();
 
     Ok(Ipv4Addr::new(octecs[0], octecs[1], octecs[2], host))
 }
 
-fn get_mask(ip_data: &IpData) -> u32 {
-    let start_host_idx: usize = ip_data.bin_ip.len() - ip_data.host_bits;
-    let subnet_bits: &str = &ip_data.bin_ip[..start_host_idx];
-    subnet_bits.len() as u32
+fn get_mask(addrs_data: &AddrsData) -> Result<u32, SubnetError> {
+    let start_host_idx: usize = addrs_data.bin_ip.len() - addrs_data.host_bits;
+    let subnet_bits: &str = &addrs_data.bin_ip[..start_host_idx];
+
+    Ok(subnet_bits.len() as u32)
 }
 
-fn get_useful_range(subnet_ip: &Ipv4Addr, broadcast: &Ipv4Addr) -> Vec<Ipv4Addr> {
-    let mut addrs: Vec<Ipv4Addr> = Vec::new();
-
-    let subnet_octecs: [u8; 4] = subnet_ip.octets();
-    let broadcast_octecs: [u8; 4] = broadcast.octets();
-
-    for i in subnet_octecs[3]+1..broadcast_octecs[3] {
-        addrs.push(Ipv4Addr::new(subnet_octecs[0], subnet_octecs[1], subnet_octecs[2], i));
-    }
-    
-    addrs
+fn get_useful_range(subnet_addrs: &Ipv4Addr, broadcast: &Ipv4Addr) -> Vec<Ipv4Addr> {
+    (subnet_addrs.octets()[3]+1..broadcast.octets()[3])
+        .map(|i| Ipv4Addr::new(subnet_addrs.octets()[0], subnet_addrs.octets()[1], subnet_addrs.octets()[2], i))
+        .collect()
 }
 
-fn get_subnet_data(ip_data: &IpData) -> Result<SubnetData, Box<dyn Error>> {
-    let subnet: Ipv4Addr = ip_data.ip;
-    let broadcast: Ipv4Addr = get_broadcast(&ip_data)?;
-    let mask: u32 = get_mask(&ip_data);
+/// Create a subnet with the given base IP address and number of hosts
+///
+/// - `addrs`: The base IP address of the subnet
+/// - `hosts`: The number of hosts in the subnet
+///
+/// Returns a SubnetData struct
+///
+/// ## Example
+/// ```
+/// use subnet::{create_subnet, SubnetData}
+///
+/// let subnet_data: SubnetData = create_subnet("192.168.0.1", 8).unwrap();
+/// assert_eq!(subnet_data.subnet, "192.168.0.0");
+/// assert_eq!(subnet_data.broadcast, "192.168.0.255");
+/// assert_eq!(subnet_data.mask, 24);
+/// assert_eq!(subnet_data.useful_range, vec!["192.168.0.1", "192.168.0.2", "192.168.0.3", "192.168.0.4", "192.168.0.5", "192.168.0.6"]);
+/// ```
+///
+pub fn create_subnet(addrs: Ipv4Addr, hosts: u32) -> Result<SubnetData, SubnetError> {
+    let addrs_data: AddrsData = get_addrs_data(addrs, hosts)?;
+
+    let subnet: Ipv4Addr = addrs_data.addrs;
+    let broadcast: Ipv4Addr = get_broadcast(&addrs_data)?;
+    let mask: u32 = get_mask(&addrs_data)?;
     let useful_range: Vec<Ipv4Addr> = get_useful_range(&subnet, &broadcast);
 
     Ok(SubnetData { subnet, broadcast, mask, useful_range })
-}
-
-pub fn run() {
-    let cli: Cli = Cli::parse();
-
-    let ip_data: IpData = get_ip_data(cli.addr, cli.machines);
-
-    let subnet_data: SubnetData = get_subnet_data(&ip_data).unwrap_or_else(|err| {
-        eprintln!("{err}");
-        process::exit(-1);
-    });
-
-    println!(
-        "Subnet: {} | Broadcast: {} | Mask: /{} | Useful range: [{} - {}]",
-        subnet_data.subnet, subnet_data.broadcast, subnet_data.mask, 
-        subnet_data.useful_range.first().unwrap(), subnet_data.useful_range.last().unwrap()
-    );
 }
 
 #[cfg(test)]
@@ -117,45 +134,42 @@ mod tests {
 
     #[test]
     fn test_ip_to_binary() {
-        let ip: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
-        assert_eq!(ip_to_binary(ip), "11000000101010000001010000000000")
+        let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
+        assert_eq!(ip_to_binary(addrs), "11000000101010000001010000000000")
     }
 
     #[test]
     fn test_binary_ip_len() {
-        let ip: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
-        assert_eq!(ip_to_binary(ip).len(), 32)
+        let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
+        assert_eq!(ip_to_binary(addrs).len(), 32)
     }
 
     #[test]
-    fn test_get_ip_data() {
-        let ip: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
-        let disp: u32 = 120;
+    fn test_get_addrs_data() {
+        let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
+        let hosts: u32 = 120;
 
-        let correct_ip_data: IpData = IpData { ip, bin_ip: ip_to_binary(ip), host_bits: 7 };
+        let correct_ip_data: AddrsData = AddrsData { addrs, bin_ip: ip_to_binary(addrs), host_bits: 7 };
 
-        assert_eq!(get_ip_data(ip, disp), correct_ip_data)
+        assert_eq!(get_addrs_data(addrs, hosts).unwrap(), correct_ip_data)
     }
 
     #[test]
     fn test_get_broadcast() {
-        let ip: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
+        let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
+        let ip_data: AddrsData = AddrsData { addrs, bin_ip: ip_to_binary(addrs), host_bits: 7 };
 
-        let ip_data: IpData = IpData { ip, bin_ip: ip_to_binary(ip), host_bits: 7 };
+        let broadcast: Result<Ipv4Addr, SubnetError> = get_broadcast(&ip_data);
 
-        let broadcast: Ipv4Addr = get_broadcast(&ip_data).unwrap_or_else(|err: Box<dyn Error>| {
-            eprintln!("{err}");
-            process::exit(1);
-        });
-
-        assert_eq!(broadcast, Ipv4Addr::new(192, 168, 20, 127))
+        assert!(broadcast.is_ok());
+        assert_eq!(broadcast.unwrap(), Ipv4Addr::new(192, 168, 20, 127))
     }
 
     #[test]
     fn test_get_mask() {
-        let ip: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
-        let ip_data: IpData = IpData { ip, bin_ip: ip_to_binary(ip), host_bits: 7 };
-        assert_eq!(get_mask(&ip_data), 25)
+        let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
+        let ip_data: AddrsData = AddrsData { addrs, bin_ip: ip_to_binary(addrs), host_bits: 7 };
+        assert_eq!(get_mask(&ip_data).unwrap(), 25)
     }
 
     #[test]
@@ -169,19 +183,16 @@ mod tests {
     }
 
     #[test]
-    fn test_get_subnet_data() {
+    fn test_create_subnet() {
         let subnet: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
-        let broadcast: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 127);
 
-        let default_subnet_data: SubnetData = SubnetData { 
-            subnet, 
-            mask: 25, 
-            useful_range: get_useful_range(&subnet, &broadcast), 
-            broadcast
-        };
+        let default_subnet_data: SubnetData = SubnetData::new(
+            subnet,
+            25,
+            get_useful_range(&subnet, &Ipv4Addr::new(192, 168, 20, 127)),
+            Ipv4Addr::new(192, 168, 20, 127)
+        );
 
-        let ip_data: IpData = IpData { ip: subnet, bin_ip: ip_to_binary(subnet), host_bits: 7 };
-
-        assert_eq!(default_subnet_data, get_subnet_data(&ip_data).unwrap());
+        assert_eq!(default_subnet_data, create_subnet(subnet, 120).unwrap());
     }
 }

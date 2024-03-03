@@ -1,10 +1,3 @@
-# Subnet
-
-A library to create IPv4 subnetworks based on a given address and the number of hosts you want to connect.
-
-## Usage
-
-```rust
 use std::net::Ipv4Addr;
 
 use subnet;
@@ -26,10 +19,3 @@ fn main() {
         useful_range.first().unwrap(), useful_range.last().unwrap()
     );
 }
-```
-
-### Output
-
-```terminal
-Subnet: 192.168.20.0 | Broadcast: 192.168.20.127 | Mask: /25 | Useful range: [192.168.20.1 - 192.168.20.126]
-```
