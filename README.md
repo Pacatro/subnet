@@ -53,6 +53,29 @@ Alternatively, you can manually add it to your project's Cargo.toml like this:
 subnet = "*" # Change the `*` to the current version
 ```
 
+## 💻 Contributing
+
+If you want to add new features to the libray, you need to follow this steps.
+
+Clone this repository
+
+```terminal
+git clone git@github.com:Pacatro/subnet.git
+cd subnet
+```
+
+Run tests
+
+```terminal
+cargo test
+```
+
+Run example
+
+```terminal
+cargo run --example subnet
+```
+
 ## 🔑 License
 
-[MIT](https://opensource.org/license/mit/) - Created by **P4k0**.
+[MIT](https://opensource.org/license/mit/) - Created by [**P4k0**](https://github.com/Pacatro).
