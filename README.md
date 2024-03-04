@@ -52,3 +52,7 @@ Alternatively, you can manually add it to your project's Cargo.toml like this:
 [dependencies]
 subnet = "*" # Change the `*` to the current version
 ```
+
+## 🔑 License
+
+[MIT](https://opensource.org/license/mit/) - Created by **P4k0**.
