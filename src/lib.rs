@@ -68,7 +68,7 @@ fn get_useful_range(subnet_addrs: &Ipv4Addr, broadcast: &Ipv4Addr) -> Vec<Ipv4Ad
 /// - `useful_range`: The range of addresses that can be used by hosts
 /// - `broadcast`: The broadcast address
 ///
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SubnetData {
     subnet: Ipv4Addr,
     mask: u32,
@@ -109,14 +109,12 @@ impl SubnetData {
 ///
 /// ```rust
 /// use std::net::Ipv4Addr;
-/// use std::str::FromStr;
-
 /// fn main() {
 ///     let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
 ///     let hosts: u32 = 120;
-
+///
 ///     let subnet = subnet::create_subnet(addrs, hosts).unwrap();
-
+///
 ///     let useful_range: Vec<Ipv4Addr> = subnet.get_useful_range();
 ///     assert_eq!(subnet.get_subnet_addrs().to_string(), "192.168.20.0");
 ///     assert_eq!(subnet.get_broadcast().to_string(), "192.168.20.127");
