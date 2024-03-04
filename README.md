@@ -7,23 +7,24 @@ A library to create IPv4 subnetworks based on a given address and the number of 
 ```rust
 use std::net::Ipv4Addr;
 
-use subnet;
-use subnet::SubnetData;
+use subnet::{self, SubnetData, SubnetError};
 
 fn main() {
     let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
     let hosts: u32 = 120;
 
-    let subnet: SubnetData = subnet::create_subnet(addrs, hosts).unwrap_or_else(|err| {
+    let subnet: SubnetData = subnet::create_subnet(addrs, hosts).unwrap_or_else(|err: SubnetError| {
         println!("Error: {}", err);
         std::process::exit(1);
     });
 
-    let useful_range: Vec<Ipv4Addr> = subnet.get_useful_range();
+    let useful_range: Vec<Ipv4Addr> = subnet.useful_range();
+
+    let bin_subnet: String = subnet::ip_to_binary(subnet.subnet_addrs());
 
     println!(
-        "Subnet address: {}\nBroadcast: {}\nMask: /{}\nUseful range: [{} - {}]",
-        subnet.get_subnet_addrs(), subnet.get_broadcast(), subnet.get_mask(), 
+        "Subnet address: {}\nBin subnet: {}\nBroadcast: {}\nMask: /{}\nUseful range: [{} - {}]",
+        subnet.subnet_addrs(), bin_subnet, subnet.broadcast(), subnet.mask(), 
         useful_range.first().unwrap(), useful_range.last().unwrap()
     );
 }
@@ -33,6 +34,7 @@ fn main() {
 
 ```terminal
 Subnet address: 192.168.20.0
+Bin subnet: 11000000101010000001010000000000
 Broadcast: 192.168.20.127
 Mask: /25
 Useful range: [192.168.20.1 - 192.168.20.126]

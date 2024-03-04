@@ -13,9 +13,11 @@ fn main() {
 
     let useful_range: Vec<Ipv4Addr> = subnet.useful_range();
 
+    let bin_subnet: String = subnet::ip_to_binary(subnet.subnet_addrs());
+
     println!(
-        "Subnet address: {}\nBroadcast: {}\nMask: /{}\nUseful range: [{} - {}]",
-        subnet.subnet_addrs(), subnet.broadcast(), subnet.mask(), 
+        "Subnet address: {}\nBin subnet: {}\nBroadcast: {}\nMask: /{}\nUseful range: [{} - {}]",
+        subnet.subnet_addrs(), bin_subnet, subnet.broadcast(), subnet.mask(), 
         useful_range.first().unwrap(), useful_range.last().unwrap()
     );
 }
