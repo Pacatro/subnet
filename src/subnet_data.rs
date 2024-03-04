@@ -21,19 +21,19 @@ impl SubnetData {
         Self { subnet, mask, useful_range, broadcast }
     }
 
-    pub fn get_subnet_addrs(&self) -> Ipv4Addr {
+    pub fn subnet_addrs(&self) -> Ipv4Addr {
         self.subnet
     }
 
-    pub fn get_mask(&self) -> u32 {
+    pub fn mask(&self) -> u32 {
         self.mask
     }
 
-    pub fn get_useful_range(&self) -> Vec<Ipv4Addr> {
+    pub fn useful_range(&self) -> Vec<Ipv4Addr> {
         self.useful_range.clone()
     }
 
-    pub fn get_broadcast(&self) -> Ipv4Addr {
+    pub fn broadcast(&self) -> Ipv4Addr {
         self.broadcast
     }
 }
