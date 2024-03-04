@@ -1,7 +1,6 @@
 use std::net::Ipv4Addr;
 
-use subnet;
-use subnet::SubnetData;
+use subnet::{self, SubnetData};
 
 fn main() {
     let addrs: Ipv4Addr = Ipv4Addr::new(192, 168, 20, 0);
